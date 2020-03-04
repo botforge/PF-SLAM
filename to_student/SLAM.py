@@ -104,6 +104,24 @@ class SLAM(object):
         # Number of measurements for each cell
         self.num_m_per_cell_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.uint64)
 
+    def _filter_scan(self, lidar_scan, L_MIN = 0.001, L_MAX = 30):
+        lidar_scan = np.squeeze(lidar_scan)
+        filtered_scan = lidar_scan[(lidar_scan > L_MIN) & (lidar_scan < L_MAX)]
+        return filtered_scan
+
+    def _polar_to_cart(self, lidar_scan, res_rad = 0.004359):
+        """
+        lidar_scan: m
+        returns: 3 x m
+        """
+        angle_min = -2.35619 #rad
+        angle_max = +2.35619 #rad
+        lidar_angles = np.arange(angle_min, angle_max, res_rad)
+        x = lidar_scan * np.cos(lidar_angles)
+        y = lidar_scan * np.sin(lidar_angles)
+        z = np.zeros_like(x)
+        lidar_cart = np.vstack((x, y, z))
+        return lidar_cart
 
     def _build_first_map(self,t0=0,use_lidar_yaw=True):
         """Build the first map using first lidar"""
@@ -113,10 +131,29 @@ class SLAM(object):
         print('\n--------Doing build the first map--------')
 
         #TODO: student's input from here 
+        #0) Extract Params from LiDAR and Joints
+        neck_angle, head_angle  = self.joints_._get_head_angles(t=0)
+        lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
+        l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+        yaw = self.lidar_.data_[0]['pose'][0, 2]
 
 
+        #1) Transform LiDAR Scan to global world frame
+        #a) lidar -> body
+        R_bl = np.dot(tf.rot_z_axis(neck_angle), tf.rot_y_axis(head_angle))
+        T_bl = np.array([0, 0, 0.15], dtype=np.float64)
+        H_bl = tf.homo_transform(R_bl, T_bl)
 
-        #End student's input 
+        #b) body -> global (only considering yaw atm)
+        R_gb = tf.rot_z_axis(yaw)
+        T_gb = np.zeros(4)
+        H_gb = tf.homo_transform(R_gb, T_gb)
+
+        #c) apply to lidar_pts
+        H_gl = H_gb @ H_bl
+        g_lidar_pts = H_gl @ l_lidar_pts
+
+        pdb.set_trace()
 
         self.MAP_ = MAP
 
