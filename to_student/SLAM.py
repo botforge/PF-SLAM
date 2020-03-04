@@ -23,7 +23,7 @@ else:
     import cPickle as pickle
 
 import pdb
-from MapUtils.bresenham2D import *
+from bresenham2D import *
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
@@ -97,11 +97,16 @@ class SLAM(object):
         MAP['sizex']  = int(np.ceil((MAP['xmax'] - MAP['xmin']) / MAP['res'] + 1)) #cells
         MAP['sizey']  = int(np.ceil((MAP['ymax'] - MAP['ymin']) / MAP['res'] + 1))
 
+        # binary representation of math
         MAP['map'] = np.zeros((MAP['sizex'],MAP['sizey']),dtype=np.int8) #DATA TYPE: char or int8
         self.MAP_ = MAP
 
+        # log_odds representation to simplify the math
         self.log_odds_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.float64)
+
+        # occupancy probability
         self.occu_ = np.ones((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.float64)
+
         # Number of measurements for each cell
         self.num_m_per_cell_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.uint64)
 
@@ -123,6 +128,11 @@ class SLAM(object):
         z = np.zeros_like(x)
         lidar_cart = np.vstack((x, y, z))
         return lidar_cart
+    
+    def _global_to_map_cell(self, g_pose, MAP):
+        cell_x = max(min(MAP['xmax'], int(np.ceil(g_pose[0] + 20 / MAP['res']))), MAP['xmin'])
+        cell_y = max(min(MAP['ymax'], int(np.ceil(g_pose[1] + 20 / MAP['res']))), MAP['ymin'])
+        return (cell_x, cell_y)
 
     def _build_first_map(self,t0=0,use_lidar_yaw=True):
         """Build the first map using first lidar"""
@@ -154,18 +164,27 @@ class SLAM(object):
 
         #c) apply to lidar_pts
         H_gl = H_gb @ H_bl
-        g_lidar_pts = H_gl @ l_lidar_pts
+        g_lidar_pts = H_gl @ homo_l_lidar_pts
 
         #d) remove ground (all points with global y < 0.1)
         non_ground_idx = g_lidar_pts[2, : ] > 0.1
         g_lidar_pts = g_lidar_pts[:, non_ground_idx]
 
-        #e) Use bresenham2D to get occupied cell locations
-        pdb.set_trace()
+        #e) Use bresenham2D to get free/occupied cell locations 
+        g_curr_pose = self.particles_[:, 10]
+        m_curr_pose = self._global_to_map_cell(g_curr_pose, MAP)
+        for ray in range(g_lidar_pts.shape[1]):
+            m_lidar_pt = self._global_to_map_cell(g_lidar_pts[:2, ray], MAP)
+            ret = bresenham2D(m_curr_pose[0], m_curr_pose[1], m_lidar_pt[0], m_lidar_pt[1])
+            free_coords = ret[:, :-1]
+            occupied_coords = ret[:, -1]
+
+            #f) Update Log Odds Map
+
+            pdb.set_trace()
 
 
         self.MAP_ = MAP
-
 
 
     def _predict(self,t,use_lidar_yaw=True):

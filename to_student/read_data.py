@@ -34,7 +34,7 @@ class JOINTS:
         # ax2.plot(range(head.shape[1]),head[1,:])
         # plt.show()
     def _get_head_angles(self, t=0):
-        return self.data_['head_angles'][t, :]
+        return self.data_['head_angles'][:, t]
 
     def _get_joint_index(self,joint):
         jointNames = ['Neck','Head','ShoulderL', 'ArmUpperL', 'LeftShoulderYaw','ArmLowerL','LeftWristYaw','LeftWristRoll','LeftWristYaw2','PelvYL','PelvL','LegUpperL','LegLowerL','AnkleL','FootL','PelvYR','PelvR','LegUpperR','LegLowerR','AnkleR','FootR','ShoulderR', 'ArmUpperR', 'RightShoulderYaw','ArmLowerR','RightWristYaw','RightWristRoll','RightWristYaw2','TorsoPitch','TorsoYaw','l_wrist_grip1','l_wrist_grip2','l_wrist_grip3','r_wrist_grip1','r_wrist_grip2','r_wrist_grip3','ChestLidarPan']
