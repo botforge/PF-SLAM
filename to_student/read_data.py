@@ -99,13 +99,13 @@ class LIDAR:
         0.0 meaning that there is no object detected.
         :return
         starting point and ending point of the ray after truncating and an indicator saying that
-        whether the last point is occupied or not 
+        whether the last point is occupied or not
         """
         # TODO: truncate 0.1 m as a limit to the min of lidar ray which is accepted
         if ray_l >= 30:
             dmin = cos(head_angle)*self.L_MIN
             dmax = self.L_MAX # go to infinity so donnot need to multiply cos(head_angle)
-            last_occu = 0  
+            last_occu = 0
             
         else:
             try:
@@ -116,7 +116,7 @@ class LIDAR:
                 new_l = l2ground - delta_l
                 if new_l > ray_l:
                     dmax = ray_l*cos(head_angle)
-                    last_occu = 1  
+                    last_occu = 1 
                 else:
                     dmax = new_l*cos(head_angle)
                     last_occu = 0 

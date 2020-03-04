@@ -23,6 +23,7 @@ else:
     import cPickle as pickle
 
 import pdb
+from MapUtils.bresenham2D import *
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
@@ -135,6 +136,8 @@ class SLAM(object):
         neck_angle, head_angle  = self.joints_._get_head_angles(t=0)
         lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+        homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
+        homo_l_lidar_pts[:3, :] = l_lidar_pts
         yaw = self.lidar_.data_[0]['pose'][0, 2]
 
 
@@ -153,7 +156,13 @@ class SLAM(object):
         H_gl = H_gb @ H_bl
         g_lidar_pts = H_gl @ l_lidar_pts
 
+        #d) remove ground (all points with global y < 0.1)
+        non_ground_idx = g_lidar_pts[2, : ] > 0.1
+        g_lidar_pts = g_lidar_pts[:, non_ground_idx]
+
+        #e) Use bresenham2D to get occupied cell locations
         pdb.set_trace()
+
 
         self.MAP_ = MAP
 
