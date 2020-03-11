@@ -51,7 +51,7 @@ class SLAM(object):
         # High of the lidar from the ground (meters)
         self.h_lidar_ = 0.93 + 0.33 + 0.15
         # Accuracy of the lidar
-        self.p_true_ = 9
+        self.p_true_ = 0.9
         self.p_false_ = 1.0/9
         
         #TODO: set a threshold value of probability to consider a map's cell occupied  
@@ -105,7 +105,7 @@ class SLAM(object):
         self.log_odds_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.float64)
 
         # occupancy probability
-        self.occu_ = np.ones((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.float64)
+        self.occu_ = np.ones((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.float64) * 0.5
 
         # Number of measurements for each cell
         self.num_m_per_cell_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.uint64)
@@ -130,9 +130,9 @@ class SLAM(object):
         return lidar_cart
     
     def _global_to_map_cell(self, g_pose, MAP):
-        cell_x = max(min(MAP['xmax'], int(np.ceil(g_pose[0] + 20 / MAP['res']))), MAP['xmin'])
-        cell_y = max(min(MAP['ymax'], int(np.ceil(g_pose[1] + 20 / MAP['res']))), MAP['ymin'])
-        return (cell_x, cell_y)
+        cell_x = max(min(MAP['xmax'], int(np.ceil(g_pose[0] / MAP['res'] + 1))), MAP['xmin'])
+        cell_y = max(min(MAP['ymax'], int(np.ceil(g_pose[1] / MAP['res'] + 1))), MAP['ymin'])
+        return (cell_x + 20, cell_y + 20)
 
     def _build_first_map(self,t0=0,use_lidar_yaw=True):
         """Build the first map using first lidar"""
@@ -159,31 +159,37 @@ class SLAM(object):
 
         #b) body -> global (only considering yaw atm)
         R_gb = tf.rot_z_axis(yaw)
-        T_gb = np.zeros(4)
+        T_gb = np.array([0.0, 0.0, self.h_lidar_])
         H_gb = tf.homo_transform(R_gb, T_gb)
 
         #c) apply to lidar_pts
         H_gl = H_gb @ H_bl
         g_lidar_pts = H_gl @ homo_l_lidar_pts
 
-        #d) remove ground (all points with global y < 0.1)
-        non_ground_idx = g_lidar_pts[2, : ] > 0.1
+        #d) remove ground (all points with global y < 0.0)
+        non_ground_idx = g_lidar_pts[2, : ] > 0.0
         g_lidar_pts = g_lidar_pts[:, non_ground_idx]
 
         #e) Use bresenham2D to get free/occupied cell locations 
         g_curr_pose = self.particles_[:, 10]
-        m_curr_pose = self._global_to_map_cell(g_curr_pose, MAP)
+        m_curr_pose = self.lidar_._physicPos2Pos(MAP, g_curr_pose[:2])
         for ray in range(g_lidar_pts.shape[1]):
-            m_lidar_pt = self._global_to_map_cell(g_lidar_pts[:2, ray], MAP)
-            ret = bresenham2D(m_curr_pose[0], m_curr_pose[1], m_lidar_pt[0], m_lidar_pt[1])
+            m_lidar_pt = self.lidar_._physicPos2Pos(MAP, g_lidar_pts[:2, ray])
+            ret = bresenham2D(m_curr_pose[0], m_curr_pose[1], m_lidar_pt[0], m_lidar_pt[1]).astype(int)
             free_coords = ret[:, :-1]
             occupied_coords = ret[:, -1]
 
-            #f) Update Log Odds Map
+            #f) Update Log Odds Map (increase all the free cells)
+            log_pos = np.log(self.p_true_ / (1 - self.p_true_))
+            log_neg = np.log(self.p_false_ / (1 - self.p_false_))
+            self.log_odds_[tuple(occupied_coords)] += log_pos
+            self.log_odds_[tuple(free_coords)] += log_neg
 
-            pdb.set_trace()
-
-
+            MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
+            MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
+        plt.imshow(MAP['map'])
+        plt.show()
+        pdb.set_trace()
         self.MAP_ = MAP
 
 
@@ -197,6 +203,7 @@ class SLAM(object):
 
     def _update(self,t,t0=0,fig='on'):
         """Update function where we update the """
+        MAP = self.MAP_
         if t == t0:
             self._build_first_map(t0,use_lidar_yaw=True)
             return

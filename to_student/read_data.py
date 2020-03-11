@@ -186,7 +186,7 @@ class LIDAR:
         [xs0, ys0] = pose
         xis = np.ceil((xs0 - MAP['xmin']) / MAP['res'] ).astype(np.int16)-1
         yis = np.ceil((ys0 - MAP['ymin']) / MAP['res'] ).astype(np.int16)-1
-        return [xis, yis]
+        return np.array([xis, yis])
 
     def _cellsFrom2Points(self,twoPoints):
         """Return cells that a line acrossing two points

@@ -62,8 +62,3 @@ def get_depth(file_name):
 		tmp = {v:m[0][0][i] for (i,v) in enumerate(key_names_depth)}
 		depth.append(tmp)
 	return depth
-
-
-
-
-
