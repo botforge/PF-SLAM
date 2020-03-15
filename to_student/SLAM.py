@@ -134,12 +134,73 @@ class SLAM(object):
         cell_y = max(min(MAP['ymax'], int(np.ceil(g_pose[1] / MAP['res'] + 1))), MAP['ymin'])
         return (cell_x + 20, cell_y + 20)
 
+
     def _build_first_map(self,t0=0,use_lidar_yaw=True):
+        pdb.set_trace()
         """Build the first map using first lidar"""
         self.t0 = t0
         # Extract a ray from lidar data
         MAP = self.MAP_
         print('\n--------Doing build the first map--------')
+
+        #TODO: student's input from here 
+        #0) Extract Params from LiDAR and Joints
+        neck_angle, head_angle  = self.joints_._get_head_angles(t=0)
+        lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
+        l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+        homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
+        homo_l_lidar_pts[:3, :] = l_lidar_pts
+        yaw = self.lidar_.data_[0]['pose'][0, 2]
+
+
+        #1) Transform LiDAR Scan to global world frame
+        #a) lidar -> body
+        R_bl = np.dot(tf.rot_z_axis(neck_angle), tf.rot_y_axis(head_angle))
+        T_bl = np.array([0, 0, 0.15], dtype=np.float64)
+        H_bl = tf.homo_transform(R_bl, T_bl)
+
+        #b) body -> global (only considering yaw atm)
+        R_gb = tf.rot_z_axis(yaw)
+        T_gb = np.array([0.0, 0.0, self.h_lidar_])
+        H_gb = tf.homo_transform(R_gb, T_gb)
+
+        #c) apply to lidar_pts
+        H_gl = H_gb @ H_bl
+        g_lidar_pts = H_gl @ homo_l_lidar_pts
+
+        #d) remove ground (all points with global y < 0.0)
+        non_ground_idx = g_lidar_pts[2, : ] > 0.0
+        g_lidar_pts = g_lidar_pts[:, non_ground_idx]
+
+        #e) Use bresenham2D to get free/occupied cell locations 
+        g_curr_pose = self.particles_[:, 10]
+        m_curr_pose = self.lidar_._physicPos2Pos(MAP, g_curr_pose[:2])
+        for ray in range(g_lidar_pts.shape[1]):
+            m_lidar_pt = self.lidar_._physicPos2Pos(MAP, g_lidar_pts[:2, ray])
+            ret = bresenham2D(m_curr_pose[0], m_curr_pose[1], m_lidar_pt[0], m_lidar_pt[1]).astype(int)
+            free_coords = ret[:, :-1]
+            occupied_coords = ret[:, -1]
+
+            #f) Update Log Odds Map (increase all the free cells)
+            log_pos = np.log(self.p_true_ / (1 - self.p_true_))
+            log_neg = np.log(self.p_false_ / (1 - self.p_false_))
+            self.log_odds_[tuple(occupied_coords)] += log_pos
+            self.log_odds_[tuple(free_coords)] += log_neg
+
+            MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
+            MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
+
+        plt.imshow(MAP['map'])
+        plt.show()
+        pdb.set_trace()
+        self.MAP_ = MAP
+
+    def _mapping(self, use_lidar_yaw=True):
+        """Build the map """
+
+        # Extract a ray from lidar data
+        MAP = self.MAP_
+        print('\n--------Building the map--------')
 
         #TODO: student's input from here 
         #0) Extract Params from LiDAR and Joints
@@ -196,9 +257,6 @@ class SLAM(object):
     def _predict(self,t,use_lidar_yaw=True):
         logging.debug('\n-------- Doing prediction at t = {0}------'.format(t))
         #TODO: student's input from here 
-
-
-
         #End student's input 
 
     def _update(self,t,t0=0,fig='on'):
