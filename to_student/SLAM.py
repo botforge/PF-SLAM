@@ -144,7 +144,7 @@ class SLAM(object):
 
         #TODO: student's input from here 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle, _  = self.joints_._get_head_angles(idx=0)
+        neck_angle, head_angle, _ = self.joints_._get_head_angles(idx=0)
         lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
@@ -200,7 +200,7 @@ class SLAM(object):
         print('\n--------Building the map--------')
 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle, _ = self.joints_._get_head_angles(idx=0)
+        neck_angle, head_angle, ts = self.joints_._get_head_angles(idx=0)
         lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
@@ -262,9 +262,6 @@ class SLAM(object):
             return
 
         #TODO: student's input from here 
-
-
-
         #End student's input 
 
         self.MAP_ = MAP
