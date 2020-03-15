@@ -5,7 +5,7 @@ sys.path.insert(0, 'MapUtils')
 from bresenham2D import bresenham2D
 import load_data as ld
 
-import time 
+import time, pdb
 import math 
 import transformations as tf 
 from math import cos, sin 
@@ -33,8 +33,10 @@ class JOINTS:
         # ax2 = fig.add_subplot(212)
         # ax2.plot(range(head.shape[1]),head[1,:])
         # plt.show()
-    def _get_head_angles(self, t=0):
-        return self.data_['head_angles'][:, t]
+
+    def _get_head_angles(self, idx=0):
+        pdb.set_trace()
+        return self.data_['head_angles'][:, idx], self.data_['ts'][0][idx]
 
     def _get_joint_index(self,joint):
         jointNames = ['Neck','Head','ShoulderL', 'ArmUpperL', 'LeftShoulderYaw','ArmLowerL','LeftWristYaw','LeftWristRoll','LeftWristYaw2','PelvYL','PelvL','LegUpperL','LegLowerL','AnkleL','FootL','PelvYR','PelvR','LegUpperR','LegLowerR','AnkleR','FootR','ShoulderR', 'ArmUpperR', 'RightShoulderYaw','ArmLowerR','RightWristYaw','RightWristRoll','RightWristYaw2','TorsoPitch','TorsoYaw','l_wrist_grip1','l_wrist_grip2','l_wrist_grip3','r_wrist_grip1','r_wrist_grip2','r_wrist_grip3','ChestLidarPan']

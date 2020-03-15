@@ -136,7 +136,6 @@ class SLAM(object):
 
 
     def _build_first_map(self,t0=0,use_lidar_yaw=True):
-        pdb.set_trace()
         """Build the first map using first lidar"""
         self.t0 = t0
         # Extract a ray from lidar data
@@ -145,7 +144,7 @@ class SLAM(object):
 
         #TODO: student's input from here 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle  = self.joints_._get_head_angles(t=0)
+        neck_angle, head_angle, _  = self.joints_._get_head_angles(idx=0)
         lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
@@ -192,19 +191,16 @@ class SLAM(object):
 
         plt.imshow(MAP['map'])
         plt.show()
-        pdb.set_trace()
         self.MAP_ = MAP
 
     def _mapping(self, use_lidar_yaw=True):
         """Build the map """
-
         # Extract a ray from lidar data
         MAP = self.MAP_
         print('\n--------Building the map--------')
 
-        #TODO: student's input from here 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle  = self.joints_._get_head_angles(t=0)
+        neck_angle, head_angle, _ = self.joints_._get_head_angles(idx=0)
         lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
@@ -250,7 +246,6 @@ class SLAM(object):
             MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
         plt.imshow(MAP['map'])
         plt.show()
-        pdb.set_trace()
         self.MAP_ = MAP
 
 
