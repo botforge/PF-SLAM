@@ -34,8 +34,14 @@ class JOINTS:
         # ax2.plot(range(head.shape[1]),head[1,:])
         # plt.show()
 
-    def _get_head_angles(self, idx=0):
-        return self.data_['head_angles'][:, idx][0], self.data_['head_angles'][:, idx][1], self.data_['ts'][0][idx]
+    def _get_head_angles(self, idx=0, ts=None):
+        """ Returns head & neck angles at index or closest to a given ts """ 
+        if ts is None:
+            return self.data_['head_angles'][:, idx][0], self.data_['head_angles'][:, idx][1], self.data_['ts'][0][idx]
+        else:
+            all_joint_ts = np.squeeze(self.data_['ts'])
+            idx = np.argmin(all_joint_ts - ts)
+            return self.data_['head_angles'][:, idx][0], self.data_['head_angles'][:, idx][1], self.data_['ts'][0][idx]
 
     def _get_joint_index(self,joint):
         jointNames = ['Neck','Head','ShoulderL', 'ArmUpperL', 'LeftShoulderYaw','ArmLowerL','LeftWristYaw','LeftWristRoll','LeftWristYaw2','PelvYL','PelvL','LegUpperL','LegLowerL','AnkleL','FootL','PelvYR','PelvR','LegUpperR','LegLowerR','AnkleR','FootR','ShoulderR', 'ArmUpperR', 'RightShoulderYaw','ArmLowerR','RightWristYaw','RightWristRoll','RightWristYaw2','TorsoPitch','TorsoYaw','l_wrist_grip1','l_wrist_grip2','l_wrist_grip3','r_wrist_grip1','r_wrist_grip2','r_wrist_grip3','ChestLidarPan']
@@ -91,9 +97,9 @@ class LIDAR:
     # 		# print 'i = {0}, ts = {1}, t_s = {2}'.format(i,lidar_data[i]['t'][0] , lidar_data[i]['t_s'] )
     # 	self.data_ = lidar_data
 
-    def _get_scan(self, ts=0, idx=None):
+    def _get_scan(self, idx=0, ts=0):
         """ Get scan closest to a given timestamp or its index """
-        #1) 
+        return self.data_[idx]['scan'], self.data_[idx]['t'][0, 0]
         # self.data[i]['t'] for an 1 x 1 array of time value  ([[....]])
 
     def _remove_ground(self,h_lidar,ray_angle=None,ray_l=None,head_angle=0,h_min = 0.2):

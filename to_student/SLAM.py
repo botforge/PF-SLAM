@@ -110,10 +110,11 @@ class SLAM(object):
         # Number of measurements for each cell
         self.num_m_per_cell_ = np.zeros((self.MAP_['sizex'],self.MAP_['sizey']),dtype = np.uint64)
 
-    def _filter_scan(self, lidar_scan, L_MIN = 0.001, L_MAX = 30):
+    def good_lidar_idx(self, lidar_scan, L_MIN = 0.001, L_MAX = 30):
+        #TODO: Truncate > L_Max and less than L_MIN
         lidar_scan = np.squeeze(lidar_scan)
-        filtered_scan = lidar_scan[(lidar_scan > L_MIN) & (lidar_scan < L_MAX)]
-        return filtered_scan
+        good_idxs = (lidar_scan > L_MIN) & (lidar_scan < L_MAX)
+        return good_idxs
 
     def _polar_to_cart(self, lidar_scan, res_rad = 0.004359):
         """
@@ -144,9 +145,11 @@ class SLAM(object):
 
         #TODO: student's input from here 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle, _ = self.joints_._get_head_angles(idx=0)
-        lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
+        lidar_scan, lidar_ts = self.lidar_._get_scan(idx=0)
+        neck_angle, head_angle, _ = self.joints_._get_head_angles(ts=lidar_ts)
+        good_lidar_idxs = self.good_lidar_idx(lidar_scan)
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+        l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         yaw = self.lidar_.data_[0]['pose'][0, 2]
@@ -189,23 +192,26 @@ class SLAM(object):
             MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
             MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
 
-        plt.imshow(MAP['map'])
-        plt.show()
+        # # plt.imshow(MAP['map'])
+        # plt.show()
         self.MAP_ = MAP
 
-    def _mapping(self, use_lidar_yaw=True):
+    def _mapping(self, idx=0, use_lidar_yaw=True):
         """Build the map """
         # Extract a ray from lidar data
         MAP = self.MAP_
         print('\n--------Building the map--------')
 
         #0) Extract Params from LiDAR and Joints
-        neck_angle, head_angle, ts = self.joints_._get_head_angles(idx=0)
-        lidar_scan = self._filter_scan(self.lidar_.data_[0]['scan'])
+        lidar_scan, lidar_ts = self.lidar_._get_scan(idx=idx)
+        neck_angle, head_angle, _ = self.joints_._get_head_angles(ts=lidar_ts)
+        good_lidar_idxs = self.good_lidar_idx(lidar_scan)
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+        l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         yaw = self.lidar_.data_[0]['pose'][0, 2]
+
 
 
         #1) Transform LiDAR Scan to global world frame
