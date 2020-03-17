@@ -154,7 +154,6 @@ class SLAM(object):
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         yaw = self.lidar_.data_[0]['pose'][0, 2]
 
-
         #1) Transform LiDAR Scan to global world frame
         #a) lidar -> body
         R_bl = np.dot(tf.rot_z_axis(neck_angle), tf.rot_y_axis(head_angle))
@@ -211,7 +210,6 @@ class SLAM(object):
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         yaw = self.lidar_.data_[0]['pose'][0, 2]
-
 
 
         #1) Transform LiDAR Scan to global world frame

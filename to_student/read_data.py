@@ -41,6 +41,7 @@ class JOINTS:
         else:
             all_joint_ts = np.squeeze(self.data_['ts'])
             idx = np.argmin(all_joint_ts - ts)
+            #CHECK IDX TO MAKE SURE IT PROGRESS THRU TIME TO DEBUG
             return self.data_['head_angles'][:, idx][0], self.data_['head_angles'][:, idx][1], self.data_['ts'][0][idx]
 
     def _get_joint_index(self,joint):
