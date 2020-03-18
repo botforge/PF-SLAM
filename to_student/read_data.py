@@ -101,7 +101,6 @@ class LIDAR:
     def _get_scan(self, idx=0, ts=0):
         """ Get scan closest to a given timestamp or its index """
         return self.data_[idx]['scan'], self.data_[idx]['t'][0, 0]
-        # self.data[i]['t'] for an 1 x 1 array of time value  ([[....]])
 
     def _remove_ground(self,h_lidar,ray_angle=None,ray_l=None,head_angle=0,h_min = 0.2):
         """Filter a ray in lidar scan: remove the ground effect

@@ -707,7 +707,6 @@ def is_same_transform(matrix0, matrix1):
     return numpy.allclose(matrix0, matrix1)
 
 
-
 ############################################################################
 
 if __name__ == "__main__":
