@@ -152,7 +152,12 @@ class SLAM(object):
         l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
-        yaw = self.lidar_.data_[0]['pose'][0, 2]
+        if use_lidar_yaw:
+            yaw = self.lidar_.data_[t0]['pose'][0, 2]
+            t_gb_x, t_gb_y, _ = self.best_p_[:, t0]
+
+        else:
+            t_gb_x, t_gb_y, yaw = self.best_p_[:, t0]
 
         #1) Transform LiDAR Scan to global world frame
         #a) lidar -> body
@@ -162,7 +167,7 @@ class SLAM(object):
 
         #b) body -> global (only considering yaw atm)
         R_gb = tf.rot_z_axis(yaw)
-        T_gb = np.array([0.0, 0.0, self.h_lidar_])
+        T_gb = np.array([t_gb_x, t_gb_y, self.h_lidar_])
         H_gb = tf.homo_transform(R_gb, T_gb)
 
         #c) apply to lidar_pts
@@ -195,21 +200,26 @@ class SLAM(object):
         pdb.set_trace()
         self.MAP_ = MAP
 
-    def _mapping(self, idx=0, use_lidar_yaw=True):
+    def _mapping(self, t=0, use_lidar_yaw=True):
         """Build the map """
         # Extract a ray from lidar data
         MAP = self.MAP_
         print('\n--------Building the map--------')
 
         #0) Extract Params from LiDAR and Joints
-        lidar_scan, lidar_ts = self.lidar_._get_scan(idx=idx)
+        lidar_scan, lidar_ts = self.lidar_._get_scan(idx=t)
         neck_angle, head_angle, _ = self.joints_._get_head_angles(ts=lidar_ts)
         good_lidar_idxs = self.good_lidar_idx(lidar_scan)
         l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
         l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
-        yaw = self.lidar_.data_[0]['pose'][0, 2]
+        if use_lidar_yaw:
+            yaw = self.lidar_.data_[t]['pose'][0, 2]
+            t_gb_x, t_gb_y, _ = self.best_p_[:, t]
+
+        else:
+            t_gb_x, t_gb_y, yaw = self.best_p_[:, t]
 
         #1) Transform LiDAR Scan to global world frame
         #a) lidar -> body
@@ -219,7 +229,7 @@ class SLAM(object):
 
         #b) body -> global (only considering yaw atm)
         R_gb = tf.rot_z_axis(yaw)
-        T_gb = np.array([0.0, 0.0, self.h_lidar_])
+        T_gb = np.array([t_gb_x, t_gb_y, self.h_lidar_])
         H_gb = tf.homo_transform(R_gb, T_gb)
 
         #c) apply to lidar_pts
@@ -247,27 +257,22 @@ class SLAM(object):
 
             MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
             MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
-        plt.imshow(MAP['map'])
-        plt.show()
-        pdb.set_trace()
+        # plt.imshow(MAP['map'])
+        # plt.show()
         self.MAP_ = MAP
 
 
-    def _predict(self, t, use_lidar_yaw=True):
+    def _predict(self, t, use_lidar_yaw=True, DR=True):
         logging.debug('\n-------- Doing prediction at t = {0}------'.format(t))
-        #0) Extract Params from LiDAR and Joints
-        lidar_scan, lidar_ts = self.lidar_._get_scan(idx=idx)
-        neck_angle, head_angle, _ = self.joints_._get_head_angles(ts=lidar_ts)
-        good_lidar_idxs = self.good_lidar_idx(lidar_scan)
-        l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
-        l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
-        homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
-        homo_l_lidar_pts[:3, :] = l_lidar_pts
-        yaw = self.lidar_.data_[0]['pose'][0, 2]
 
         # DEAD-RECKONING
-        # p_curr = 
+        if DR:
+            p_curr = self.best_p_[:, t]
+            o_curr = self.lidar_.data_[t]['pose']
+            o_next = self.lidar_.data_[min(self.num_data_-1, t+1)]['pose']
+            p_next = tf.twoDSmartPlus(p_curr, tf.twoDSmartMinus(o_next, o_curr))
 
+        self.best_p_[:, min(self.num_data_-1, t+1)] = p_next
         #TODO: student's input from here 
         #End student's input 
 
