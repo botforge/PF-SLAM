@@ -153,7 +153,7 @@ class SLAM(object):
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         if use_lidar_yaw:
-            yaw = self.lidar_.data_[t0]['pose'][0, 2]
+            yaw = self.lidar_.data_[t0]['rpy'][0, 2]
             t_gb_x, t_gb_y, _ = self.best_p_[:, t0]
 
         else:
@@ -196,8 +196,9 @@ class SLAM(object):
             MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
             MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
 
-        plt.imshow(MAP['map'])
-        pdb.set_trace()
+        # plt.imshow(MAP['map'])
+        self.best_p_[:, min(self.num_data_-1, t0)] = g_curr_pose[:3]
+        self.best_p_indices_[:, min(self.num_data_-1, t0)] = m_curr_pose
         self.MAP_ = MAP
 
     def _mapping(self, t=0, use_lidar_yaw=True):
@@ -215,7 +216,7 @@ class SLAM(object):
         homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
         homo_l_lidar_pts[:3, :] = l_lidar_pts
         if use_lidar_yaw:
-            yaw = self.lidar_.data_[t]['pose'][0, 2]
+            yaw = self.lidar_.data_[t]['rpy'][0, 2]
             t_gb_x, t_gb_y, _ = self.best_p_[:, t]
 
         else:
@@ -267,12 +268,16 @@ class SLAM(object):
 
         # DEAD-RECKONING
         if DR:
-            p_curr = self.best_p_[:, t]
-            o_curr = self.lidar_.data_[t]['pose']
-            o_next = self.lidar_.data_[min(self.num_data_-1, t+1)]['pose']
+            p_curr = self.best_p_[:, t-1]
+            o_curr = self.lidar_.data_[t-1]['pose'][0, :]
+            o_curr[2] = self.lidar_.data_[t-1]['rpy'][0, 2]
+            o_next = self.lidar_.data_[t]['pose'][0, :]
+            o_next[2] = self.lidar_.data_[t]['rpy'][0, 2]
             p_next = tf.twoDSmartPlus(p_curr, tf.twoDSmartMinus(o_next, o_curr))
 
-        self.best_p_[:, min(self.num_data_-1, t+1)] = p_next
+        self.best_p_[:, t] = p_next
+        p_next_idx = self.lidar_._physicPos2Pos(self.MAP_, p_next[:2])
+        self.best_p_indices_[:, t] = p_next_idx
         #TODO: student's input from here 
         #End student's input 
 

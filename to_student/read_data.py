@@ -214,17 +214,6 @@ class LIDAR:
         cells = bresenham2D(sx, sy, ex, ey)
         return cells 
 
-
-
-    
-
-
-
-
-
-
-
-
 # test 
 # lidar = LIDAR()
 # joint = JOINTS()
