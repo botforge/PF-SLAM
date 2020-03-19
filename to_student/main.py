@@ -233,12 +233,11 @@ def particle_SLAM(src_dir, dataset_id=0, split_name='train', running_mode='test_
         else:
             slam_inc._mapping(t=t)
 
-
         # Prediction
         slam_inc._predict(t)
 
         # Update
-        # slam_inc._update(t,t0=t0,fig='off')
+        slam_inc._update(t,t0=t0,fig='off')
 
         # Resample particles if necessary
         num_eff = 1.0/np.sum(np.dot(slam_inc.weights_,slam_inc.weights_))
@@ -268,7 +267,7 @@ def particle_SLAM(src_dir, dataset_id=0, split_name='train', running_mode='test_
             cv2.imwrite(MAP_fig_path, MAP_2_display)
             plt.title('Estimated Map at time stamp %d/%d'%(t, num_steps - t0 + 1))
             plt.imshow(MAP_2_display)
-            plt.pause(0.1)
+            plt.pause(0.01)
             logging.debug(">> Save %s"%MAP_fig_path)
             
     # Return best_p which are an array of size 3xnum_data that represents the best particle over the whole time stamp

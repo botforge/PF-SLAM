@@ -158,6 +158,7 @@ class SLAM(object):
 
         else:
             t_gb_x, t_gb_y, yaw = self.best_p_[:, t0]
+        p_curr = np.array([t_gb_x, t_gb_y, yaw], dtype=np.float64)
 
         #1) Transform LiDAR Scan to global world frame
         #a) lidar -> body
@@ -179,7 +180,7 @@ class SLAM(object):
         g_lidar_pts = g_lidar_pts[:, non_ground_idx]
 
         #e) Use bresenham2D to get free/occupied cell locations 
-        g_curr_pose = self.particles_[:, 10]
+        g_curr_pose = p_curr
         m_curr_pose = self.lidar_._physicPos2Pos(MAP, g_curr_pose[:2])
         for ray in range(g_lidar_pts.shape[1]):
             m_lidar_pt = self.lidar_._physicPos2Pos(MAP, g_lidar_pts[:2, ray])
@@ -203,6 +204,7 @@ class SLAM(object):
 
     def _mapping(self, t=0, use_lidar_yaw=True):
         """Build the map """
+        t-=1
         # Extract a ray from lidar data
         MAP = self.MAP_
         print('\n--------Building the map--------')
@@ -221,6 +223,7 @@ class SLAM(object):
 
         else:
             t_gb_x, t_gb_y, yaw = self.best_p_[:, t]
+        p_curr = np.array([t_gb_x, t_gb_y, yaw], dtype=np.float64)
 
         #1) Transform LiDAR Scan to global world frame
         #a) lidar -> body
@@ -242,7 +245,7 @@ class SLAM(object):
         g_lidar_pts = g_lidar_pts[:, non_ground_idx]
 
         #e) Use bresenham2D to get free/occupied cell locations 
-        g_curr_pose = self.particles_[:, 10]
+        g_curr_pose = p_curr
         m_curr_pose = self.lidar_._physicPos2Pos(MAP, g_curr_pose[:2])
         for ray in range(g_lidar_pts.shape[1]):
             m_lidar_pt = self.lidar_._physicPos2Pos(MAP, g_lidar_pts[:2, ray])
@@ -258,26 +261,36 @@ class SLAM(object):
 
             MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
             MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
-        # plt.imshow(MAP['map'])
-        # plt.show()
         self.MAP_ = MAP
 
 
-    def _predict(self, t, use_lidar_yaw=True, DR=True):
+    def _predict(self, t, use_lidar_yaw=True, DR=False):
         logging.debug('\n-------- Doing prediction at t = {0}------'.format(t))
-
+        t-=1
         # DEAD-RECKONING
         if DR:
-            p_curr = self.best_p_[:, t-1]
-            o_curr = self.lidar_.data_[t-1]['pose'][0, :]
-            o_curr[2] = self.lidar_.data_[t-1]['rpy'][0, 2]
-            o_next = self.lidar_.data_[t]['pose'][0, :]
-            o_next[2] = self.lidar_.data_[t]['rpy'][0, 2]
+            p_curr = self.best_p_[:, t]
+            o_curr = self.lidar_.data_[t]['pose'][0, :]
+            o_curr[2] = self.lidar_.data_[t]['rpy'][0, 2]
+            o_next = self.lidar_.data_[t+1]['pose'][0, :]
+            o_next[2] = self.lidar_.data_[t+1]['rpy'][0, 2]
             p_next = tf.twoDSmartPlus(p_curr, tf.twoDSmartMinus(o_next, o_curr))
 
-        self.best_p_[:, t] = p_next
-        p_next_idx = self.lidar_._physicPos2Pos(self.MAP_, p_next[:2])
-        self.best_p_indices_[:, t] = p_next_idx
+        # LOCALIZATION PREDICTION
+        else:
+            o_curr = self.lidar_.data_[t]['pose'][0, :]
+            o_curr[2] = self.lidar_.data_[t]['rpy'][0, 2]
+            o_next = self.lidar_.data_[t+1]['pose'][0, :]
+            o_next[2] = self.lidar_.data_[t+1]['rpy'][0, 2]
+            w = np.random.multivariate_normal(np.zeros(3), self.mov_cov_, 1)[0]
+            for i in range(self.num_p_):
+                p_curr = self.best_p_[:, i]
+                p_next = tf.twoDSmartPlus(p_curr, tf.twoDSmartMinus(o_next, o_curr))
+                p_next = tf.twoDSmartPlus(p_next, w)
+
+        # self.best_p_[:, t] = p_next
+        # p_next_idx = self.lidar_._physicPos2Pos(self.MAP_, p_next[:2])
+        # self.best_p_indices_[:, t] = p_next_idx
         #TODO: student's input from here 
         #End student's input 
 
