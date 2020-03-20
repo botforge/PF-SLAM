@@ -192,6 +192,16 @@ class LIDAR:
         [eX, eY, _] = np.dot(world_to_part_rot,exy1_r)
         return [eX,eY]
 
+    def _physicPos2PosVec(self, MAP, poses):
+        """ poses: 3 x n array """
+        xs0 = poses[0, :]
+        ys0 = poses[1, :]
+        xis = np.ceil((xs0 - MAP['xmin']) / MAP['res']).astype(np.int16) - 1
+        yis = np.ceil((ys0 - MAP['ymin']) / MAP['res']).astype(np.int16) - 1
+        poses[0, :] = xis
+        poses[1, :] = yis
+        return poses
+
     def _physicPos2Pos(self,MAP,pose):
         """ Return the corresponding indices in MAP array, given the physical position"""
         # convert from meters to cells

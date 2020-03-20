@@ -297,12 +297,55 @@ class SLAM(object):
     def _update(self,t,t0=0,fig='on'):
         """Update function where we update the """
         MAP = self.MAP_
-        if t == t0:
-            self._build_first_map(t0,use_lidar_yaw=True)
-            return
+        t-=1
+        # if t == t0:
+        #     self._build_first_map(t0,use_lidar_yaw=True)
+        #     return
 
-        #TODO: student's input from here 
-        #End student's input 
+        correlations = np.empty(self.num_p_)
+        for i in range(self.num_p_):
+            #0) Extract Params from LiDAR and Joints
+            lidar_scan, lidar_ts = self.lidar_._get_scan(idx=t)
+            neck_angle, head_angle, _ = self.joints_._get_head_angles(ts=lidar_ts)
+            good_lidar_idxs = self.good_lidar_idx(lidar_scan)
+            l_lidar_pts = self._polar_to_cart(lidar_scan, res_rad=self.lidar_.res_rad)
+            l_lidar_pts = l_lidar_pts[:, good_lidar_idxs]
+            homo_l_lidar_pts = np.ones((4, l_lidar_pts.shape[1]), dtype=np.float64)
+            homo_l_lidar_pts[:3, :] = l_lidar_pts
+            
+            p_curr = self.particles_[:, i]
+            p_curr[2] = self.lidar_.data_[t]['rpy'][0, 2]
 
+            #1) Transform LiDAR Scan to global world frame
+            #a) lidar -> body
+            R_bl = np.dot(tf.rot_z_axis(neck_angle), tf.rot_y_axis(head_angle))
+            T_bl = np.array([0, 0, 0.15], dtype=np.float64)
+            H_bl = tf.homo_transform(R_bl, T_bl)
+
+            #b) body -> global (only considering yaw atm)
+            R_gb = tf.rot_z_axis(p_curr[2])
+            T_gb = np.array([p_curr[0], p_curr[1], self.h_lidar_])
+            H_gb = tf.homo_transform(R_gb, T_gb)
+
+            #c) apply to lidar_pts
+            H_gl = H_gb @ H_bl
+            g_lidar_pts = H_gl @ homo_l_lidar_pts
+
+            #d) remove ground (all points with global y < 0.0)
+            non_ground_idx = g_lidar_pts[2, : ] > 0.0
+            g_lidar_pts = g_lidar_pts[:, non_ground_idx]
+
+            #e) Convert  to map cell coords & Compute corr(m_t, y_t)
+            m_lidar_pts = (self.lidar_._physicPos2PosVec(MAP, g_lidar_pts[:2, :])).astype(np.int64)
+            corr = prob.mapCorrelation(MAP['map'], m_lidar_pts)
+            correlations[i] = corr
+        self.weights_ = prob.update_weights(self.weights_, correlations)
+
+        #Update the best particle position
+        max_idx = np.argmax(self.weights_)
+        g_particle = self.particles_[:, max_idx]
+        self.best_p_[:, t+1] = g_particle
+        m_particle = self.lidar_._physicPos2Pos(MAP, g_particle[:2])
+        self.best_p_indices_[:, t+1] = m_particle
         self.MAP_ = MAP
         return MAP
