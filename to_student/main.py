@@ -166,7 +166,7 @@ def particle_SLAM(src_dir, dataset_id=0, split_name='train', running_mode='test_
     ###############################################################################################  
     #* Student's input
     #TODO: change the resolution of the map - the distance between two cells (meters)
-    map_resolution = 0.05    
+    map_resolution = 0.05
 
     # Number of particles 
     #TODO: change the number of particles

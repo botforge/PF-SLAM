@@ -284,9 +284,10 @@ class SLAM(object):
             o_next[2] = self.lidar_.data_[t+1]['rpy'][0, 2]
             w = np.random.multivariate_normal(np.zeros(3), self.mov_cov_, 1)[0]
             for i in range(self.num_p_):
-                p_curr = self.best_p_[:, i]
+                p_curr = self.particles_[:, i]
                 p_next = tf.twoDSmartPlus(p_curr, tf.twoDSmartMinus(o_next, o_curr))
                 p_next = tf.twoDSmartPlus(p_next, w)
+                self.particles_[:, i] = p_next
 
         # self.best_p_[:, t] = p_next
         # p_next_idx = self.lidar_._physicPos2Pos(self.MAP_, p_next[:2])
@@ -314,7 +315,7 @@ class SLAM(object):
             homo_l_lidar_pts[:3, :] = l_lidar_pts
             
             p_curr = self.particles_[:, i]
-            p_curr[2] = self.lidar_.data_[t]['rpy'][0, 2]
+            # p_curr[2] = self.lidar_.data_[t]['rpy'][0, 2]
 
             #1) Transform LiDAR Scan to global world frame
             #a) lidar -> body
@@ -345,7 +346,7 @@ class SLAM(object):
         max_idx = np.argmax(self.weights_)
         g_particle = self.particles_[:, max_idx]
         self.best_p_[:, t+1] = g_particle
-        m_particle = self.lidar_._physicPos2Pos(MAP, g_particle[:2])
+        m_particle = self.lidar_._physicPos2Pos(MAP, g_particle[:2]).astype(np.int64)
         self.best_p_indices_[:, t+1] = m_particle
         self.MAP_ = MAP
         return MAP
