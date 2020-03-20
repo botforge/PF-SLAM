@@ -194,8 +194,8 @@ class SLAM(object):
             self.log_odds_[tuple(occupied_coords)] += log_pos
             self.log_odds_[tuple(free_coords)] += log_neg
 
-            MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
-            MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
+        MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
+        MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
 
         # plt.imshow(MAP['map'])
         self.best_p_[:, min(self.num_data_-1, t0)] = g_curr_pose[:3]
@@ -247,8 +247,9 @@ class SLAM(object):
         #e) Use bresenham2D to get free/occupied cell locations 
         g_curr_pose = p_curr
         m_curr_pose = self.lidar_._physicPos2Pos(MAP, g_curr_pose[:2])
+        m_lidar_pts  = self.lidar_._physicPos2PosVec(MAP, g_lidar_pts[:2, :])
         for ray in range(g_lidar_pts.shape[1]):
-            m_lidar_pt = self.lidar_._physicPos2Pos(MAP, g_lidar_pts[:2, ray])
+            m_lidar_pt = m_lidar_pts[:, ray]
             ret = bresenham2D(m_curr_pose[0], m_curr_pose[1], m_lidar_pt[0], m_lidar_pt[1]).astype(int)
             free_coords = ret[:, :-1]
             occupied_coords = ret[:, -1]
@@ -259,8 +260,8 @@ class SLAM(object):
             self.log_odds_[tuple(occupied_coords)] += log_pos
             self.log_odds_[tuple(free_coords)] += log_neg
 
-            MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
-            MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
+        MAP['map'][self.log_odds_ >= self.logodd_thresh_] = 1
+        MAP['map'][self.log_odds_ < self.logodd_thresh_] = 0
         self.MAP_ = MAP
 
 
